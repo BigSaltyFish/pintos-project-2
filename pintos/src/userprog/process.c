@@ -59,7 +59,61 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
+
+  char temp[20];
+  int i;
+  while (file_name[i] != ' '&&file_name[i] != '\n'&&file_name[i] != '\0') {
+	  temp[i] = file_name[i];
+	  i++;
+  }
+  temp[i] = '\0';
+
+  success = load (temp, &if_.eip, &if_.esp);
+
+  char *argv[20];
+  int j = 0;
+  char *stack = if_.esp;
+  int argc = 0;
+  char *tmp = file_name;
+  stack--;
+  while (true) {
+	  int bound = 0;
+	  if (*tmp == '\0')break;
+	  while (*tmp == ' ' || *tmp == '\n') {
+		  tmp++;
+	  }
+	  while (*(tmp + bound) != ' '&&*(tmp + bound) != '\n'&&*(tmp + bound) != '\0') {
+		  bound++;
+	  }
+	  stack -= bound + 1;
+	  argv[argc++] = stack;
+	  for (j = 0; j < bound; ++j) {
+		  *(stack + j) = *(tmp + j);
+	  }
+	  *(stack + bound) = '\0';
+	  tmp += bound;
+  }
+
+  for (j = 0; j < argc; ++j) {
+	  printf("%s\n", argv[j]);
+  }
+
+  while ((int)stack % 4 != 0) {
+	  stack--;
+	  *(stack) = (char)0;
+  }
+
+  argv[argc] = (char *)0;
+  for (j = argc; j >= 0; j--) {
+	  stack -= 4;
+	  *((char**)stack) = argv[j];
+  }
+  stack -= 4;
+  *(int*)stack = argc;
+  stack -= 4;
+  *(void **)stack = (void *)0;
+
+  if_.esp = stack;
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
@@ -88,7 +142,8 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  return -1;
+	while (true);
+	return -1;
 }
 
 /* Free the current process's resources. */
