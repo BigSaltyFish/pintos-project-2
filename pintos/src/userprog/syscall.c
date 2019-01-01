@@ -3,6 +3,7 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
 #include "syscall.h"
 
 static void syscall_handler (struct intr_frame *);
@@ -30,7 +31,8 @@ syscall_init (void)
 
 int sys_exit(int status)
 {
-	return 0;
+	thread_exit();
+	return -1;
 }
 
 int sys_write(int fd, const void * buffer, unsigned length)
@@ -94,8 +96,31 @@ int sys_remove(const char * file)
 }
 
 static void
-syscall_handler (struct intr_frame *f UNUSED) 
+syscall_handler (struct intr_frame *f) 
 {
   printf ("you hit it!\n");
-  thread_exit ();
+  handler h;
+  int  *p;
+  int ret;
+
+  /* pintos has pushed the stack for us 
+    * now the stack has the syscall number and its arguments inside
+    */
+  p = f->esp;
+
+  if (!is_user_vaddr(p))
+	  goto terminate;
+
+  h = syscall_vec[*p];
+
+  if (!(is_user_vaddr(p + 1) && is_user_vaddr(p + 2) && is_user_vaddr(p + 3)))
+	  goto terminate;
+  
+  ret = h(*(p + 1), *(p + 2), *(p + 3));
+
+  f->eax = ret;
+  return;
+  
+terminate:
+  sys_exit(-1);
 }
