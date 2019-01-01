@@ -140,10 +140,19 @@ start_process (void *file_name_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
-	while (true);
-	return -1;
+	struct thread *t;
+	int ret;
+	t = get_thread_by_tid(child_tid);
+
+	if (!t || t->status == THREAD_DYING || t->parent == thread_current())
+		return -1;
+	t->parent = thread_current();
+	while (!t || t->status != THREAD_DYING) {
+		thread_block();
+	}
+	return 0;
 }
 
 /* Free the current process's resources. */

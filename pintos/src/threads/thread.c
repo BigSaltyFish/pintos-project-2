@@ -276,6 +276,18 @@ thread_current (void)
   return t;
 }
 
+/* get a thread by its tid
+  used in process_wait. */
+struct thread*
+get_thread_by_tid(tid_t child)
+{
+	struct thread *t;
+	for (t = list_begin(&all_list); t != list_end(&all_list); t = list_next(t)) {
+		if (t->tid == child) return t;
+	}
+	return NULL;
+}
+
 /* Returns the running thread's tid. */
 tid_t
 thread_tid (void) 

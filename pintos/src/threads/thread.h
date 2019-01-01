@@ -14,6 +14,9 @@ enum thread_status
     THREAD_DYING        /* About to be destroyed. */
   };
 
+/*define a group of thread return status. */
+
+
 /* Thread identifier type.
    You can redefine this to whatever type you like. */
 typedef int tid_t;
@@ -120,6 +123,7 @@ void thread_block (void);
 void thread_unblock (struct thread *);
 
 struct thread *thread_current (void);
+struct thread *get_thread_by_tid(tid_t);
 tid_t thread_tid (void);
 const char *thread_name (void);
 
