@@ -146,11 +146,13 @@ process_wait (tid_t child_tid)
 	int ret;
 	t = get_thread_by_tid(child_tid);
 
-	if (!t || t->status == THREAD_DYING || t->parent == thread_current())
-		return -1;
-	t->parent = thread_current();
+	//if (!t || t->status == THREAD_DYING || t->parent == thread_current())
+		//return -1;
+	//t->parent = thread_current();
 	while (!t || t->status != THREAD_DYING) {
+		intr_disable();
 		thread_block();
+		intr_enable();
 	}
 	return 0;
 }
