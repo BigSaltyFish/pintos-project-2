@@ -3,6 +3,7 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "syscall.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -27,9 +28,74 @@ syscall_init (void)
 
 }
 
+int sys_exit(int status)
+{
+	return 0;
+}
+
+int sys_write(int fd, const void * buffer, unsigned length)
+{
+	return 0;
+}
+
+int sys_halt(void)
+{
+	return 0;
+}
+
+int sys_create(const char * file, unsigned initial_size)
+{
+	return 0;
+}
+
+int sys_open(const char * file)
+{
+	return 0;
+}
+
+int sys_close(int fd)
+{
+	return 0;
+}
+
+int sys_read(int fd, void * buffer, unsigned size)
+{
+	return 0;
+}
+
+int sys_exec(const char * cmd)
+{
+	return 0;
+}
+
+int sys_wait(int pid)
+{
+	return 0;
+}
+
+int sys_filesize(int fd)
+{
+	return 0;
+}
+
+int sys_tell(int fd)
+{
+	return 0;
+}
+
+int sys_seek(int fd, unsigned pos)
+{
+	return 0;
+}
+
+int sys_remove(const char * file)
+{
+	return 0;
+}
+
 static void
 syscall_handler (struct intr_frame *f UNUSED) 
 {
-  printf ("system call!\n");
+  printf ("you hit it!\n");
   thread_exit ();
 }
