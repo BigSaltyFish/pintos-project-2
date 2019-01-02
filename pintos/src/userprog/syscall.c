@@ -1,10 +1,12 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
+#include "threads/init.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "syscall.h"
+#include "lib/kernel/console.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -32,16 +34,20 @@ syscall_init (void)
 int sys_exit(int status)
 {
 	thread_exit();
-	return -1;
+	return 0;
 }
 
 int sys_write(int fd, const void * buffer, unsigned length)
 {
+	if (fd == 1) {
+		putbuf(buffer, length);
+	}
 	return 0;
 }
 
 int sys_halt(void)
 {
+	shutdown_power_off();
 	return 0;
 }
 
