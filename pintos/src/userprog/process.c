@@ -94,9 +94,6 @@ start_process (void *file_name_)
 	  tmp += bound;
   }
 
-  for (j = 0; j < argc; ++j) {
-	  printf("%s\n", argv[j]);
-  }
 
   while ((int)stack % 4 != 0) {
 	  stack--;
@@ -108,6 +105,11 @@ start_process (void *file_name_)
 	  stack -= 4;
 	  *((char**)stack) = argv[j];
   }
+
+  char *store = stack;
+  stack -= 4;
+  *(char **)stack = store;
+
   stack -= 4;
   *(int*)stack = argc;
   stack -= 4;
