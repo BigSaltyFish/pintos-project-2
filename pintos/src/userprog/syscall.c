@@ -33,6 +33,8 @@ syscall_init (void)
 
 int sys_exit(int status)
 {
+	struct thread *t = thread_current();
+	printf("%s: exit(%d)\n", t->name, status);
 	thread_exit();
 	return 0;
 }

@@ -283,8 +283,10 @@ get_thread_by_tid(tid_t child)
 {
 	struct thread *t;
 	struct list_elem *e;
-	for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e)) {
-		t = list_entry(e, struct thread, elem);
+	for (e = list_begin(&all_list); e != list_end(&all_list);
+		e = list_next(e)) 
+	{
+		t = list_entry(e, struct thread, allelem);
 		if (t->tid == child) return t;
 	}
 	return NULL;
