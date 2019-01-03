@@ -1,21 +1,27 @@
 #include "userprog/process.h"
+#include "pagedir.h"
 #include <stdio.h>
 #include <syscall-nr.h>
 #include "threads/init.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
 #include "syscall.h"
 #include "lib/kernel/console.h"
 
 static void syscall_handler (struct intr_frame *);
 void parse_arg(struct intr_frame *f, int *arg, int n);
+void *addr_map(const void *);
+void check_addr(const void *);
+
+struct lock filesys_lock;
 
 void
 syscall_init (void) 
 {
-  intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
-
+	lock_init(&filesys_lock);
+	intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
 pid_t sys_exit(int status)
@@ -40,9 +46,12 @@ static void sys_halt(void)
 	return 0;
 }
 
-static int sys_create(const char * file, unsigned initial_size)
+static bool sys_create(const char * file, unsigned initial_size)
 {
-	return 0;
+	lock_acquire(&filesys_lock);
+	bool success = filesys_create(file, initial_size);
+	lock_release(&filesys_lock);
+	return success;
 }
 
 static int sys_open(const char * file)
@@ -60,6 +69,7 @@ static int sys_read(int fd, void * buffer, unsigned size)
 	return 0;
 }
 
+/* the length of the commandline may be infinite. */
 static pid_t sys_exec(const char * cmd_line)
 {
 	tid_t tid = process_execute(cmd_line);
@@ -71,7 +81,7 @@ static pid_t sys_exec(const char * cmd_line)
 	return tid;
 }
 
-static int sys_wait(int pid)
+static int sys_wait(pid_t pid)
 {
 	return 0;
 }
@@ -126,13 +136,18 @@ syscall_handler (struct intr_frame *f)
 	  break;
   case SYS_EXEC:
 	  parse_arg(f, args, 1);
+	  args[0] = addr_map((const void *)args[0]);
 	  f->eax = sys_exec((const char *)args[0]);
+	  break;
+  case SYS_CREATE:
+	  parse_arg(f, args, 2);
+	  args[0] = addr_map((const void *)args[0]);
+	  f->eax = sys_create((const char *)args[0], (unsigned int)args[1]);
 	  break;
   default:
 	  break;
   }
 
-  f->eax = ret;
   return;
   
 terminate:
@@ -146,8 +161,26 @@ void parse_arg(struct intr_frame *f, int *arg, int n)
 	for (i = 0; i < n; i++)
 	{
 		ptr = (int *)f->esp + i + 1;
-		if (!is_user_vaddr((const void *)ptr)) { sys_exit(-1); }
+		check_addr(ptr);
 		arg[i] = *ptr;
+	}
+}
+
+/* users use virtual memory addresses in their program, 
+if the arguments are real value, we do nothing, but if the argument is a pointer, 
+we need to change the address into physical address. */
+void* addr_map(const void *addr)
+{
+	check_addr(addr);
+	void *ptr = pagedir_get_page(thread_current()->pagedir, addr);
+	if (!ptr) sys_exit(-1);
+	else return ptr;
+}
+
+void check_addr(const void * addr)
+{
+	if (!is_user_vaddr((const void *)addr || addr < USER_ADDR_BOTTOM)) {
+		sys_exit(-1);
 	}
 }
 
