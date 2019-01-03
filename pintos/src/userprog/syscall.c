@@ -1,4 +1,4 @@
-#include "userprog/syscall.h"
+#include "userprog/process.h"
 #include <stdio.h>
 #include <syscall-nr.h>
 #include "threads/init.h"
@@ -18,15 +18,15 @@ syscall_init (void)
 
 }
 
-int exit(int status)
+pid_t sys_exit(int status)
 {
 	struct thread *t = thread_current();
 	printf("%s: exit(%d)\n", t->name, status);
 	thread_exit();
-	return 0;
+	return status;
 }
 
-int write(int fd, const void * buffer, unsigned length)
+static int sys_write(int fd, const void * buffer, unsigned length)
 {
 	if (fd == 1) {
 		putbuf(buffer, length);
@@ -34,58 +34,64 @@ int write(int fd, const void * buffer, unsigned length)
 	return 0;
 }
 
-void halt(void)
+static void sys_halt(void)
 {
 	shutdown_power_off();
 	return 0;
 }
 
-int create(const char * file, unsigned initial_size)
+static int sys_create(const char * file, unsigned initial_size)
 {
 	return 0;
 }
 
-int open(const char * file)
+static int sys_open(const char * file)
 {
 	return 0;
 }
 
-int close(int fd)
+static int sys_close(int fd)
 {
 	return 0;
 }
 
-int read(int fd, void * buffer, unsigned size)
+static int sys_read(int fd, void * buffer, unsigned size)
 {
 	return 0;
 }
 
-int exec(const char * cmd)
+static pid_t sys_exec(const char * cmd_line)
+{
+	tid_t tid = process_execute(cmd_line);
+	if (tid == TID_ERROR)
+		return TID_ERROR;
+	struct thread *t = get_thread_by_tid(tid);
+	while (t->process->loaded == NOT_LOAD);
+	if (t->process->loaded == LOAD_FAIL) return TID_ERROR;
+	return tid;
+}
+
+static int sys_wait(int pid)
 {
 	return 0;
 }
 
-int wait(int pid)
+static int sys_filesize(int fd)
 {
 	return 0;
 }
 
-int filesize(int fd)
+static int sys_tell(int fd)
 {
 	return 0;
 }
 
-int tell(int fd)
+static int sys_seek(int fd, unsigned pos)
 {
 	return 0;
 }
 
-int seek(int fd, unsigned pos)
-{
-	return 0;
-}
-
-int remove(const char * file)
+static int sys_remove(const char * file)
 {
 	return 0;
 }
@@ -108,15 +114,19 @@ syscall_handler (struct intr_frame *f)
   switch (*(int*)p)
   {
   case SYS_HALT:
-	  halt();
+	  sys_halt();
 	  break;
   case SYS_EXIT:
 	  parse_arg(f, args, 1);
-	  exit(args[0]);
+	  sys_exit(args[0]);
 	  break;
   case SYS_WRITE:
 	  parse_arg(f, args, 3);
-	  write(args[0], (const void *)args[1], (unsigned)args[2]);
+	  sys_write(args[0], (const void *)args[1], (unsigned)args[2]);
+	  break;
+  case SYS_EXEC:
+	  parse_arg(f, args, 1);
+	  f->eax = sys_exec((const char *)args[0]);
 	  break;
   default:
 	  break;
@@ -126,7 +136,7 @@ syscall_handler (struct intr_frame *f)
   return;
   
 terminate:
-  exit(-1);
+  sys_exit(-1);
 }
 
 void parse_arg(struct intr_frame *f, int *arg, int n)
@@ -136,7 +146,17 @@ void parse_arg(struct intr_frame *f, int *arg, int n)
 	for (i = 0; i < n; i++)
 	{
 		ptr = (int *)f->esp + i + 1;
-		if (!is_user_vaddr((const void *)ptr)) { exit(-1); }
+		if (!is_user_vaddr((const void *)ptr)) { sys_exit(-1); }
 		arg[i] = *ptr;
 	}
+}
+
+struct process* init_process(tid_t tid)
+{
+	struct process *p;
+	p = malloc(sizeof(struct process));
+	p->pid = tid;
+	p->loaded = NOT_LOAD;
+
+	return p;
 }

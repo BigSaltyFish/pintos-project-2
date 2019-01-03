@@ -17,6 +17,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "userprog/syscall.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -119,8 +120,13 @@ start_process (void *file_name_)
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  if (!success) 
-    thread_exit ();
+  if (!success) {
+	  thread_current()->process->loaded = LOAD_FAIL;
+	  thread_exit();
+  }
+  else {
+	  thread_current()->process->loaded = LOADED;
+  }
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -153,7 +159,7 @@ process_wait (tid_t child_tid)
 	//t->parent = thread_current();
 	while (!t || t->status != THREAD_DYING) {
 		intr_disable();
-		thread_block();
+		thread_yield();
 		intr_enable();
 	}
 	return 0;
