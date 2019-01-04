@@ -22,7 +22,7 @@ static int sys_wait(pid_t pid);
 static int sys_filesize(int fd);
 static int sys_tell(int fd);
 static int sys_seek(int fd, unsigned pos);
-static int sys_remove(const char *file);
+static bool sys_remove(const char *file);
 
 
 /* new process forked by syscall exec. */

@@ -101,8 +101,11 @@ static int sys_seek(int fd, unsigned pos)
 	return 0;
 }
 
-static int sys_remove(const char * file)
+static bool sys_remove(const char * file)
 {
+	lock_acquire(&filesys_lock);
+	bool success = filesys_remove(file);
+	lock_release(&filesys_lock);
 	return 0;
 }
 
@@ -126,23 +129,33 @@ syscall_handler (struct intr_frame *f)
   case SYS_HALT:
 	  sys_halt();
 	  break;
+
   case SYS_EXIT:
 	  parse_arg(f, args, 1);
 	  sys_exit(args[0]);
 	  break;
+
   case SYS_WRITE:
 	  parse_arg(f, args, 3);
 	  sys_write(args[0], (const void *)args[1], (unsigned)args[2]);
 	  break;
+
   case SYS_EXEC:
 	  parse_arg(f, args, 1);
 	  args[0] = addr_map((const void *)args[0]);
 	  f->eax = sys_exec((const char *)args[0]);
 	  break;
+
   case SYS_CREATE:
 	  parse_arg(f, args, 2);
 	  args[0] = addr_map((const void *)args[0]);
 	  f->eax = sys_create((const char *)args[0], (unsigned int)args[1]);
+	  break;
+
+  case SYS_REMOVE:
+	  parse_arg(f, args, 1);
+	  args[0] = addr_map((const void *)args[0]);
+	  f->eax = sys_remove((const void *)args[0]);
 	  break;
   default:
 	  break;
