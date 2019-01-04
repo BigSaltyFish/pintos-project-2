@@ -30,8 +30,16 @@ struct process
 {
 	struct thread *t;
 	pid_t pid;
-	struct list_elem elem;
 	bool loaded;
+	struct list files;
+};
+
+/* the file descriptor. */
+struct file_descriptor
+{
+	struct file *f;
+	int fd;
+	struct list_elem elem;
 };
 
 struct process* init_process(tid_t tid);

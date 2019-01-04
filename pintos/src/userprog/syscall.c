@@ -14,6 +14,7 @@ static void syscall_handler (struct intr_frame *);
 void parse_arg(struct intr_frame *f, int *arg, int n);
 void *addr_map(const void *);
 void check_addr(const void *);
+struct file *get_file(int fd);
 
 struct lock filesys_lock;
 
@@ -56,7 +57,22 @@ static bool sys_create(const char * file, unsigned initial_size)
 
 static int sys_open(const char * file)
 {
-	return 0;
+	lock_acquire(&filesys_lock);
+	struct thread *t = thread_current();
+	struct file *fi = filesys_open(file);
+
+	if (fi == NULL) {
+		lock_release(&filesys_lock);
+		return -1;
+	}
+
+	struct file_descriptor *f_d = malloc(sizeof(struct file_descriptor));
+	f_d->f = fi;
+	f_d->fd = list_size(&t->process->files) + 2;
+	list_push_back(&t->process->files, &f_d->elem);
+
+	lock_release(&filesys_lock);
+	return f_d->fd;
 }
 
 static int sys_close(int fd)
@@ -88,7 +104,15 @@ static int sys_wait(pid_t pid)
 
 static int sys_filesize(int fd)
 {
-	return 0;
+	lock_acquire(&filesys_lock);
+	struct file *f = get_file(fd);
+	if (f == NULL) {
+		lock_release(&filesys_lock);
+		return -1;
+	}
+	int leng = file_length(f);
+	lock_release(&filesys_lock);
+	return leng;
 }
 
 static int sys_tell(int fd)
@@ -157,6 +181,17 @@ syscall_handler (struct intr_frame *f)
 	  args[0] = addr_map((const void *)args[0]);
 	  f->eax = sys_remove((const void *)args[0]);
 	  break;
+
+  case SYS_OPEN:
+	  parse_arg(f, args, 1);
+	  args[0] = addr_map((const void *)args[0]);
+	  f->eax = sys_open((const void *)args[0]);
+	  break;
+
+  case SYS_FILESIZE:
+	  parse_arg(f, args, 1);
+	  f->eax = sys_filesize((const void *)args[0]);
+	  break;
   default:
 	  break;
   }
@@ -203,6 +238,24 @@ struct process* init_process(tid_t tid)
 	p = malloc(sizeof(struct process));
 	p->pid = tid;
 	p->loaded = NOT_LOAD;
+	list_init(&p->files);
 
 	return p;
+}
+
+struct file *get_file(int fd)
+{
+	struct process *p = thread_current()->process;
+	struct list_elem *e;
+
+	for (e = list_begin(&p->files); e != list_end(&p->files);
+		e = list_next(e))
+	{
+		struct file_descriptor *f_d = list_entry(e, struct file_descriptor, elem);
+		if (fd == f_d->fd)
+		{
+			return f_d->f;
+		}
+	}
+	return NULL;
 }
