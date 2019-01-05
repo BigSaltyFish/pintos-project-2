@@ -17,6 +17,7 @@ void check_addr(const void *);
 struct file *get_file(int fd);
 void add_child(struct thread*);
 struct process *get_child(tid_t);
+void remove_child(struct process*);
 
 struct lock filesys_lock;
 
@@ -27,12 +28,13 @@ syscall_init (void)
 	intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
-pid_t sys_exit(int status)
+void sys_exit(int status)
 {
 	struct thread *t = thread_current();
+	t->process->ret_status = status;
+	t->process->alive = false;
 	printf("%s: exit(%d)\n", t->name, status);
 	thread_exit();
-	return status;
 }
 
 static int sys_write(int fd, const void * buffer, unsigned length)
@@ -101,7 +103,7 @@ static pid_t sys_exec(const char * cmd_line)
 
 static int sys_wait(pid_t pid)
 {
-	return 0;
+	return process_wait(pid);
 }
 
 static int sys_filesize(int fd)
@@ -181,18 +183,23 @@ syscall_handler (struct intr_frame *f)
   case SYS_REMOVE:
 	  parse_arg(f, args, 1);
 	  args[0] = addr_map((const void *)args[0]);
-	  f->eax = sys_remove((const void *)args[0]);
+	  f->eax = sys_remove((const char *)args[0]);
 	  break;
 
   case SYS_OPEN:
 	  parse_arg(f, args, 1);
 	  args[0] = addr_map((const void *)args[0]);
-	  f->eax = sys_open((const void *)args[0]);
+	  f->eax = sys_open((const char *)args[0]);
 	  break;
 
   case SYS_FILESIZE:
 	  parse_arg(f, args, 1);
-	  f->eax = sys_filesize((const void *)args[0]);
+	  f->eax = sys_filesize((int)args[0]);
+	  break;
+
+  case SYS_WAIT:
+	  parse_arg(f, args, 1);
+	  f->eax = sys_wait((pid_t)args[0]);
 	  break;
   default:
 	  break;
@@ -240,6 +247,8 @@ struct process* init_process(tid_t tid)
 	p = malloc(sizeof(struct process));
 	p->pid = tid;
 	p->loaded = NOT_LOAD;
+	p->alive = true;
+	p->ret_status = -1;
 	list_init(&p->files);
 	list_init(&p->children);
 
@@ -265,7 +274,7 @@ struct file *get_file(int fd)
 
 void add_child(struct thread *t)
 {
-	struct process *p = init_process(t);
+	struct process *p = init_process(t->tid);
 	list_push_back(&thread_current()->process->children, &p->elem);
 }
 
@@ -284,4 +293,10 @@ struct process *get_child(tid_t tid)
 		}
 	}
 	return NULL;
+}
+
+void remove_child(struct process *p)
+{
+	list_remove(&p->elem);
+	free(p);
 }

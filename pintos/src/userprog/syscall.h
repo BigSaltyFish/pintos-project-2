@@ -10,7 +10,7 @@
 
 void syscall_init (void);
 
-pid_t sys_exit(int status);
+void sys_exit(int status);
 static int sys_write(int fd, const void *buffer, unsigned length);
 static void sys_halt(void);
 static bool sys_create(const char *file, unsigned initial_size);
@@ -39,6 +39,11 @@ struct process
 	// list of its children
 	struct list children;
 	struct list_elem elem;
+
+	// whether the process is alive or not.
+	bool alive;
+	// the return status of the process, used by its parent.
+	int ret_status;
 };
 
 /* the file descriptor. */

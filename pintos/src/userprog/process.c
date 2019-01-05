@@ -29,6 +29,10 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name) 
 {
+	struct thread *cur = thread_current();
+	if (cur->process == NULL) {
+		cur->process = init_process(cur->tid);
+	}
   char *fn_copy;
   tid_t tid;
 
@@ -150,19 +154,18 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid) 
 {
-	struct thread *t;
-	int ret;
-	t = get_thread_by_tid(child_tid);
+	struct process *p;
+	p = get_child(child_tid);
+	if (p == NULL) return -1;
 
-	//if (!t || t->status == THREAD_DYING || t->parent == thread_current())
-		//return -1;
-	//t->parent = thread_current();
-	while (!t || t->status != THREAD_DYING) {
-		intr_disable();
-		thread_yield();
-		intr_enable();
+	while (p->alive) {
+		printf("alive!");
 	}
-	return 0;
+
+	int ret = p->ret_status;
+	remove_child(p);
+	
+	return ret;
 }
 
 /* Free the current process's resources. */
