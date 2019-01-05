@@ -126,7 +126,9 @@ static pid_t sys_exec(const char * cmd_line)
 	if (tid == TID_ERROR)
 		return TID_ERROR;
 	struct process *p = get_child(tid);
-	while (p->loaded == NOT_LOAD);
+	while (p->loaded == NOT_LOAD) {
+		thread_yield();
+	}
 	if (p->loaded == LOAD_FAIL) return TID_ERROR;
 	return tid;
 }
@@ -187,18 +189,16 @@ static bool sys_remove(const char * file)
 static void
 syscall_handler (struct intr_frame *f) 
 {
-  int  *p;
   int ret;
   int args[100];
 
   /* pintos has pushed the stack for us 
     * now the stack has the syscall number and its arguments inside
     */
-  p = f->esp;
 
-  check_addr((const void *)p);
+  check_addr((const void *)f->esp);
   
-  switch (*(int*)p)
+  switch (*(int*)f->esp)
   {
   case SYS_HALT:
 	  sys_halt();
@@ -308,7 +308,8 @@ void* addr_map(const void *addr)
 
 void check_addr(const void * addr)
 {
-	if (!is_user_vaddr((const void *)addr || addr < USER_ADDR_BOTTOM)) {
+	if (!is_user_vaddr(addr) || addr < USER_ADDR_BOTTOM)
+	{
 		sys_exit(-1);
 	}
 }

@@ -5,7 +5,7 @@
 #define NOT_LOAD 0
 #define LOADED 1
 #define LOAD_FAIL 2
-#define USER_ADDR_BOTTOM 0x08084000
+#define USER_ADDR_BOTTOM ((const void *)0x08048000)
 #define CLOSE_ALL -1
 
 
