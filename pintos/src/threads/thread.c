@@ -183,7 +183,7 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
-  t->process = init_process(t);
+  t->process = init_process(tid);
 
   /* Prepare thread for first run by initializing its stack.
      Do this atomically so intermediate values for the 'stack' 
@@ -210,7 +210,7 @@ thread_create (const char *name, int priority,
   // add the child process into the child list of the parent
   t->parent = thread_tid();
   if (thread_current()->process != NULL)
-	  add_child(t);
+	  add_child(t->process);
 
   /* Add to run queue. */
   thread_unblock (t);
