@@ -15,6 +15,8 @@ void parse_arg(struct intr_frame *f, int *arg, int n);
 void *addr_map(const void *);
 void check_addr(const void *);
 struct file *get_file(int fd);
+void add_child(struct thread*);
+struct process *get_child(tid_t);
 
 struct lock filesys_lock;
 
@@ -91,9 +93,9 @@ static pid_t sys_exec(const char * cmd_line)
 	tid_t tid = process_execute(cmd_line);
 	if (tid == TID_ERROR)
 		return TID_ERROR;
-	struct thread *t = get_thread_by_tid(tid);
-	while (t->process->loaded == NOT_LOAD);
-	if (t->process->loaded == LOAD_FAIL) return TID_ERROR;
+	struct process *p = get_child(tid);
+	while (p->loaded == NOT_LOAD);
+	if (p->loaded == LOAD_FAIL) return TID_ERROR;
 	return tid;
 }
 
@@ -239,6 +241,7 @@ struct process* init_process(tid_t tid)
 	p->pid = tid;
 	p->loaded = NOT_LOAD;
 	list_init(&p->files);
+	list_init(&p->children);
 
 	return p;
 }
@@ -255,6 +258,29 @@ struct file *get_file(int fd)
 		if (fd == f_d->fd)
 		{
 			return f_d->f;
+		}
+	}
+	return NULL;
+}
+
+void add_child(struct thread *t)
+{
+	struct process *p = init_process(t);
+	list_push_back(&thread_current()->process->children, &p->elem);
+}
+
+struct process *get_child(tid_t tid)
+{
+	struct thread *t = thread_current();
+	struct list_elem *e;
+
+	for (e = list_begin(&t->process->children); e != list_end(&t->process->children);
+		e = list_next(e))
+	{
+		struct process *p = list_entry(e, struct process, elem);
+		if (tid == p->pid)
+		{
+			return p;
 		}
 	}
 	return NULL;

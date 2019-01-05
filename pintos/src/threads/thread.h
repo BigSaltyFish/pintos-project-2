@@ -103,6 +103,9 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+
+	struct process *process;					 /* the process that this thread belongs to. */
+	tid_t *parent;									 /* the tid of the parent. */
   };
 
 /* If false (default), use round-robin scheduler.

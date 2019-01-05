@@ -30,8 +30,15 @@ struct process
 {
 	struct thread *t;
 	pid_t pid;
+	// if the executable is loaded successfully
 	bool loaded;
+
+	// list of the opened files
 	struct list files;
+
+	// list of its children
+	struct list children;
+	struct list_elem elem;
 };
 
 /* the file descriptor. */

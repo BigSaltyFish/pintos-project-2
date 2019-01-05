@@ -207,6 +207,10 @@ thread_create (const char *name, int priority,
 
   intr_set_level (old_level);
 
+  // add the child process into the child list of the parent
+  t->parent = thread_tid();
+  add_child(t);
+
   /* Add to run queue. */
   thread_unblock (t);
 
