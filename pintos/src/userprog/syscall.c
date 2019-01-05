@@ -15,7 +15,7 @@ void parse_arg(struct intr_frame *f, int *arg, int n);
 void *addr_map(const void *);
 void check_addr(const void *);
 struct file *get_file(int fd);
-void add_child(struct thread*);
+void add_child(struct process*);
 struct process *get_child(tid_t);
 void remove_child(struct process*);
 
@@ -30,10 +30,10 @@ syscall_init (void)
 
 void sys_exit(int status)
 {
-	struct thread *t = thread_current();
-	t->process->ret_status = status;
-	t->process->alive = false;
-	printf("%s: exit(%d)\n", t->name, status);
+	struct thread *cur = thread_current();
+	cur->process->ret_status = status;
+	cur->process->alive = false;
+	printf("%s: exit(%d)\n", cur->name, status);
 	thread_exit();
 }
 
@@ -272,9 +272,8 @@ struct file *get_file(int fd)
 	return NULL;
 }
 
-void add_child(struct thread *t)
+void add_child(struct process *p)
 {
-	struct process *p = init_process(t->tid);
 	list_push_back(&thread_current()->process->children, &p->elem);
 }
 

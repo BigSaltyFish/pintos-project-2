@@ -28,7 +28,7 @@ static bool sys_remove(const char *file);
 /* new process forked by syscall exec. */
 struct process 
 {
-	struct thread *t;
+	//struct thread *t;
 	pid_t pid;
 	// if the executable is loaded successfully
 	bool loaded;

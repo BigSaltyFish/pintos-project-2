@@ -43,6 +43,9 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  char *save_ptr;
+  file_name = strtok_r((char *)file_name, " ", &save_ptr);
+
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
@@ -124,6 +127,8 @@ start_process (void *file_name_)
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
+
+  // before this, we need to ensure that the process has been initialized.
   if (!success) {
 	  thread_current()->process->loaded = LOAD_FAIL;
 	  thread_exit();
