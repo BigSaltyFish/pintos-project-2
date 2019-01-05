@@ -129,7 +129,7 @@ static pid_t sys_exec(const char * cmd_line)
 	while (p->loaded == NOT_LOAD) {
 		thread_yield();
 	}
-	if (p->loaded == LOAD_FAIL) return TID_ERROR;
+	if (p->loaded == LOAD_FAIL) return -1;
 	return tid;
 }
 

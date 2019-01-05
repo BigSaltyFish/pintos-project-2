@@ -32,7 +32,7 @@ struct process
 	//struct thread *t;
 	pid_t pid;
 	// if the executable is loaded successfully
-	bool loaded;
+	int loaded;
 
 	// list of the opened files
 	struct list files;

@@ -68,62 +68,7 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
 
-  char temp[20];
-  int i;
-  while (file_name[i] != ' '&&file_name[i] != '\n'&&file_name[i] != '\0') {
-	  temp[i] = file_name[i];
-	  i++;
-  }
-  temp[i] = '\0';
-
-  success = load (temp, &if_.eip, &if_.esp);
-
-  char *argv[20];
-  int j = 0;
-  char *stack = if_.esp;
-  int argc = 0;
-  char *tmp = file_name;
-  stack--;
-  while (true) {
-	  int bound = 0;
-	  if (*tmp == '\0')break;
-	  while (*tmp == ' ' || *tmp == '\n') {
-		  tmp++;
-	  }
-	  while (*(tmp + bound) != ' '&&*(tmp + bound) != '\n'&&*(tmp + bound) != '\0') {
-		  bound++;
-	  }
-	  stack -= bound + 1;
-	  argv[argc++] = stack;
-	  for (j = 0; j < bound; ++j) {
-		  *(stack + j) = *(tmp + j);
-	  }
-	  *(stack + bound) = '\0';
-	  tmp += bound;
-  }
-
-
-  while ((int)stack % 4 != 0) {
-	  stack--;
-	  *(stack) = (char)0;
-  }
-
-  argv[argc] = (char *)0;
-  for (j = argc; j >= 0; j--) {
-	  stack -= 4;
-	  *((char**)stack) = argv[j];
-  }
-
-  char *store = stack;
-  stack -= 4;
-  *(char **)stack = store;
-
-  stack -= 4;
-  *(int*)stack = argc;
-  stack -= 4;
-  *(void **)stack = (void *)0;
-
-  if_.esp = stack;
+  success = load (file_name, &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
@@ -164,7 +109,7 @@ process_wait (tid_t child_tid)
 	if (p == NULL) return -1;
 
 	while (p->alive) {
-		printf("alive!");
+		thread_yield();
 	}
 
 	int ret = p->ret_status;
@@ -277,7 +222,7 @@ struct Elf32_Phdr
 #define PF_W 2          /* Writable. */
 #define PF_R 4          /* Readable. */
 
-static bool setup_stack (void **esp);
+static bool setup_stack (void **esp, char *file_name);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
@@ -303,8 +248,16 @@ load (const char *file_name, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
+  char temp[20];
+  int j;
+  while (file_name[j] != ' '&&file_name[j] != '\n'&&file_name[j] != '\0') {
+	  temp[j] = file_name[j];
+	  j++;
+  }
+  temp[j] = '\0';
+
   /* Open executable file. */
-  file = filesys_open (file_name);
+  file = filesys_open (temp);
   if (file == NULL) 
     {
       printf ("load: %s: open failed\n", file_name);
@@ -384,7 +337,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
     }
 
   /* Set up stack. */
-  if (!setup_stack (esp))
+  if (!setup_stack (esp, file_name))
     goto done;
 
   /* Start address. */
@@ -509,7 +462,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
 static bool
-setup_stack (void **esp) 
+setup_stack (void **esp, char *file_name) 
 {
   uint8_t *kpage;
   bool success = false;
@@ -518,8 +471,56 @@ setup_stack (void **esp)
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-      if (success)
-        *esp = PHYS_BASE;
+	  if (success) {
+		  *esp = PHYS_BASE;
+
+		  char *argv[20];
+		  int j = 0;
+		  char *stack = *esp;
+		  int argc = 0;
+		  char *tmp = file_name;
+		  stack--;
+		  while (true) {
+			  int bound = 0;
+			  if (*tmp == '\0')break;
+			  while (*tmp == ' ' || *tmp == '\n') {
+				  tmp++;
+			  }
+			  while (*(tmp + bound) != ' '&&*(tmp + bound) != '\n'&&*(tmp + bound) != '\0') {
+				  bound++;
+			  }
+			  stack -= bound + 1;
+			  argv[argc++] = stack;
+			  for (j = 0; j < bound; ++j) {
+				  *(stack + j) = *(tmp + j);
+			  }
+			  *(stack + bound) = '\0';
+			  tmp += bound;
+		  }
+
+
+		  while ((int)stack % 4 != 0) {
+			  stack--;
+			  *(stack) = (char)0;
+		  }
+
+		  argv[argc] = (char *)0;
+		  for (j = argc; j >= 0; j--) {
+			  stack -= 4;
+			  *((char**)stack) = argv[j];
+		  }
+
+		  char *store = stack;
+		  stack -= 4;
+		  *(char **)stack = store;
+
+		  stack -= 4;
+		  *(int*)stack = argc;
+		  stack -= 4;
+		  *(void **)stack = (void *)0;
+
+		  *esp = stack;
+	  }
       else
         palloc_free_page (kpage);
     }
