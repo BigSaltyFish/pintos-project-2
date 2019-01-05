@@ -195,8 +195,8 @@ syscall_handler (struct intr_frame *f)
   /* pintos has pushed the stack for us 
     * now the stack has the syscall number and its arguments inside
     */
-
   check_addr((const void *)f->esp);
+  addr_map((const void *)f->esp);
   
   switch (*(int*)f->esp)
   {
