@@ -19,7 +19,7 @@
 
 struct lock filesys_lock;
 
-struct file_descriptor {
+struct process_file {
   struct file *file;
   int fd;
   struct list_elem elem;
@@ -144,13 +144,13 @@ void halt (void)
 
 void exit (int status)
 {
-	struct thread *cur = thread_current();
-	if (thread_alive(cur->parent))
-	{
-		cur->cp->status = status;
-	}
-	printf("%s: exit(%d)\n", cur->name, status);
-	thread_exit();
+  struct thread *cur = thread_current();
+  if (thread_alive(cur->parent))
+    {
+      cur->cp->status = status;
+    }
+  printf ("%s: exit(%d)\n", cur->name, status);
+  thread_exit();
 }
 
 pid_t exec (const char *cmd_line)
@@ -244,7 +244,7 @@ int read (int fd, void *buffer, unsigned size)
 
 int write (int fd, const void *buffer, unsigned size)
 {
-  if (fd == 1)
+  if (fd == STDOUT_FILENO)
     {
       putbuf(buffer, size);
       return size;
@@ -318,12 +318,12 @@ int user_to_kernel_ptr(const void *vaddr)
 
 int process_add_file (struct file *f)
 {
-  struct file_descriptor *f_d = malloc(sizeof(struct file_descriptor));
-  f_d->file = f;
-  f_d->fd = thread_current()->fd;
+  struct process_file *pf = malloc(sizeof(struct process_file));
+  pf->file = f;
+  pf->fd = thread_current()->fd;
   thread_current()->fd++;
-  list_push_back(&thread_current()->file_list, &f_d->elem);
-  return f_d->fd;
+  list_push_back(&thread_current()->file_list, &pf->elem);
+  return pf->fd;
 }
 
 struct file* process_get_file (int fd)
@@ -334,10 +334,10 @@ struct file* process_get_file (int fd)
   for (e = list_begin (&t->file_list); e != list_end (&t->file_list);
        e = list_next (e))
         {
-          struct file_descriptor *f_d = list_entry (e, struct file_descriptor, elem);
-          if (fd == f_d->fd)
+          struct process_file *pf = list_entry (e, struct process_file, elem);
+          if (fd == pf->fd)
 	    {
-	      return f_d->file;
+	      return pf->file;
 	    }
         }
   return NULL;
@@ -351,12 +351,12 @@ void process_close_file (int fd)
   while (e != list_end (&t->file_list))
     {
       next = list_next(e);
-      struct file_descriptor *f_d = list_entry (e, struct file_descriptor, elem);
-      if (fd == f_d->fd || fd == CLOSE_ALL)
+      struct process_file *pf = list_entry (e, struct process_file, elem);
+      if (fd == pf->fd || fd == CLOSE_ALL)
 	{
-	  file_close(f_d->file);
-	  list_remove(&f_d->elem);
-	  free(f_d);
+	  file_close(pf->file);
+	  list_remove(&pf->elem);
+	  free(pf);
 	  if (fd != CLOSE_ALL)
 	    {
 	      return;
@@ -396,13 +396,13 @@ struct child_process* get_child_process (int pid)
   return NULL;
 }
 
-void remove_child (struct child_process *cp)
+void remove_child_process (struct child_process *cp)
 {
   list_remove(&cp->elem);
   free(cp);
 }
 
-void remove_children (void)
+void remove_child_processes (void)
 {
   struct thread *t = thread_current();
   struct list_elem *next, *e = list_begin(&t->child_list);

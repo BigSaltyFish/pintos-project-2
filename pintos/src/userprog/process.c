@@ -120,7 +120,7 @@ process_wait (tid_t child_tid UNUSED)
       barrier();
     }
   int status = cp->status;
-  remove_child(cp);
+  remove_child_process(cp);
   return status;
 }
 
@@ -135,7 +135,7 @@ process_exit (void)
   process_close_file(CLOSE_ALL);
 
   // Free child list
-  remove_children();
+  remove_child_processes();
 
   // Set exit value to true in case killed by the kernel
   if (thread_alive(cur->parent))
